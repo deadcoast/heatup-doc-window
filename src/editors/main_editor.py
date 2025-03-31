@@ -1,9 +1,8 @@
 # Master file integrating all components for the HEAT UP text editor with advanced features
 import tkinter as tk
-from tkinter import Toplevel, simpledialog, Menu, Text, filedialog
 from tkinter.font import Font, BOLD, ITALIC
-import tkinter as tk
-from tkinter import Menu, simpledialog, filedialog, messagebox
+from tkinter import Menu, simpledialog, filedialog, messagebox, font, Toplevel, Menu, Text
+
 from src.editors.editor_configuration import EditorConfiguration  # Ensure this module exists
 from src.widgets.document_widget import DocumentWidget  # Ensure this module exists
 from src.widgets.flare_widget import FlareWidget  # Ensure this module exists
@@ -21,6 +20,9 @@ class MainEditor:
         Initializes the main editor window with given color palette
         """
         self.root = root
+        self.config = EditorConfiguration()
+        self.document_widgets = {} # Stores active Document Widgets indexed by the keyword
+        self.current_flare = None # Reference to the currently active Flare widget
         self.configure_root()
         self.text_widget = self.create_text_widget()
         self.words_to_widgets = {}  # Maps words to their respective HEAT UP document widgets
@@ -38,9 +40,29 @@ class MainEditor:
         self.text_widget = Text(root, wrap='none', undo=True, font=self.font)
         self.text_widget.pack(expand=True, fill='both')
         self.apply_palette()
-
+        self.root.title("HEAT UP Editor - birdie")
+        self.palette = palette
+        self.editor_font = font.Font(family="Consolas", size=12)
+        self.text_area = self._create_text_area()
+        self.flare_widget = None
+        self.propagation_engine = PropagationEngine()
+        self._bind_events()
+        self.document_widgets = {}
         # Bind Ctrl+Click to create hyperlink action
         self.text_widget.bind("<Control-Button-1>", self.create_hyperlink)
+        self.text_area = ScrolledText(master, font=('Consolas', 12), undo=True, wrap=tk.WORD,
+                                bg=self.config.get_color('dark_purple')['500'],
+                                fg=self.config.get_color('white')['200'])
+        self.text_area.pack(expand=True, fill=tk.BOTH)
+        self.setup_bindings()
+
+    def setup_bindings(self):
+        """
+        Setup the keyboard/mouse bindings for executing editor commands like open, save, find, etc.
+        """
+        self.text_area.bind('<Control-o>', lambda e: self.open_file())
+        self.text_area.bind('<Control-s>', lambda e: self.save_file())
+        self.text_area.bind('<Control-f>', lambda e: self.find_text())
 
     def setup_ui(self):
         """
@@ -53,7 +75,129 @@ class MainEditor:
         self.text_area.pack(expand=True, fill='both')
         self.menu_bar = Menu(self.master)
         self.setup_menu()
+
+    def create_document_widget(self, keyword):
+        """
+        Creates a new Document Widget for a keyword.
+        Parameters:
+            keyword (str): The keyword to create a Document Widget for
+        """
+        if keyword not in self.document_widgets:
+            self.document_widgets[keyword] = DocumentWidget(linked_word=keyword)
+            # Set the color based on Editor's palette
+            self.document_widgets[keyword].color = self.config.palette['dark_red']
+
+    def open_flare_widget(self, keyword):
+        """
+        Opens the FLR for the given keyword, if it exists, else creates one.
+        Parameters:
+            keyword (str): The keyword whose FLR to open
+        """
+        if keyword in self.document_widgets:
+            if self.current_flare and self.current_flare.title == keyword:
+                # if FLR widget is already open, simply toggle its state
+                self.current_flare.toggle_state()
+            else:
+                # Create a new FLR widget for the keyword if it doesn't already exist
+                self.current_flare = FlareWidget(title=keyword)
+                self.current_flare.toggle_state()  # Open the FLR widget in 'edit' state
+        else:
+            print(f"No document widget found for the keyword '{keyword}'")
     
+    def create_text_area(self):
+        """
+        Creates the main text area widget with scrollbar and custom styling.
+        """
+        text_area = tk.Text(self.root, font=self.editor_font, undo=True, wrap='word')
+        text_area.pack(expand=True, fill='both', side='left', padx=5, pady=5)
+
+        # Set the text area colors based on the palette
+        text_area.configure(bg=self.palette['background'], fg=self.palette['foreground'])
+
+        # Configure scrollbar for the text area
+        scrollbar = tk.Scrollbar(self.root, command=text_area.yview)
+        scrollbar.pack(side='right', fill='y')
+        text_area['yscrollcommand'] = scrollbar.set
+
+        return text_area
+    
+    def find_text(self):
+        """
+        Initiates a search within the text content based on a user-provided query.
+        """
+        search_query = simpledialog.askstring("Find", "Enter the search term:")
+        if search_query:
+            index = '1.0'
+            while True:  # Continue searching until the last character
+                index = self.text_area.search(search_query, index, nocase=True, stopindex=tk.END)
+                if not index: break
+                last_index = f"{index}+{len(search_query)}c"
+                self.text_area.tag_add('highlight', index, last_index)
+                index = last_index
+            self.text_area.tag_config('highlight', background='yellow')
+
+    def bind_events(self):
+        """
+        Binds key events and functionalities to the text area.
+        """
+        self.text_area.bind('<Control-Button-1>', self.on_ctrl_click)
+        self.text_area.bind('<Control-s>', self.save_file)
+        self.text_area.bind('<Control-o>', self.open_file)
+
+    def on_ctrl_click(self, event):
+        """
+        Event handler for Ctrl+Click to create or manage Document Widgets and Flares.
+        """
+        clicked_word = self.get_clicked_word(event.x, event.y)
+        if clicked_word:
+            self.create_or_toggle_flare(clicked_word)
+
+    def get_clicked_word(self, x, y):
+        """
+        Gets the word where the mouse event occurred.
+        """
+        index = self.text_area.index(f"@{x},{y}")
+        word = self.text_area.get(index, f"{index} wordend")
+        return word.strip()
+
+    def create_or_toggle_flare(self, keyword):
+        """
+        Creates a new Document Widget and FLARE or toggles the existing one.
+        """
+        # Create a new HEAT UP Document Widget and Flare widget
+        if keyword not in self.document_widgets:
+            # The color property can be fetched from the color palette by string matching
+            document_widget = DocumentWidget(self.root, keyword, color=self.palette['highlight'])
+            flare = FlareWidget(title=f'FLARE: {keyword}', content='', palette=self.palette)
+            self.document_widgets[keyword] = (document_widget, flare)
+        # Toggle the visibility of the existing widget
+        else:
+            self.document_widgets[keyword][1].toggle_visibility()
+
+    def save_file(self, event=None):
+        """
+        Save current content in the text area to a file.
+        """
+        file_path = simpledialog.askstring("Save as", "Enter the file name:")
+        try:
+            with open(file_path, 'w') as file:
+                file.write(self.text_area.get('1.0', tk.END))
+        except IOError as e:
+            messagebox.showerror("Save failed", e)
+
+    def open_file(self, event=None):
+        """
+        Open content from a file into the text area.
+        """
+        file_path = simpledialog.askstring("Open file", "Enter the file name:")
+        try:
+            with open(file_path, 'r') as file:
+                content = file.read()
+                self.text_area.delete('1.0', tk.END)
+                self.text_area.insert('1.0', content)
+        except IOError as e:
+            messagebox.showerror("Open failed", e)
+        
     def create_text_widget(self):
         # Create text widget with advanced features for editing
         text_widget = Text(self.root, wrap='none', font=('Courier New', 14), undo=True)
@@ -95,6 +239,11 @@ class MainEditor:
             if keyword not in self.flare_widgets:
                 flare_widget = FlareWidget(self.master, keyword, self.editor_config.get_full_palette())
                 self.flare_widgets[keyword] = flare_widget
+
+    def setup_syntax_highlighter(self):
+        """ Integrates the syntax highlighting mechanisms into the text editing area. """
+        self.syntax_highlighter = SyntaxHighlighter(self.text_area, self.editor_config.get_color_palette())
+        self.syntax_highlighter.highlight_syntax()
 
     def create_flare_widget(self):
         """

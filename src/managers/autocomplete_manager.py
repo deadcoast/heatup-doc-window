@@ -1,5 +1,4 @@
 
-
 class AutoCompleteManager:
     def __init__(self, text_widget, word_list=None):
         self.text_widget = text_widget
@@ -23,3 +22,4 @@ class AutoCompleteManager:
         self.text_widget.delete("%s linestart" % position, position)
         self.text_widget.insert("%s linestart" % position, ' '.join(typed_word.split()[:-1]) + ' ' + (suggestions[0] if suggestions else typed_word))
         self.text_widget.mark_set("insert", position)
+        

@@ -23,6 +23,92 @@ class EditorUI(Frame):
         self.pack(fill=tk.BOTH, expand=True)
         self.create_widgets()
         self.create_menu()
+        super().__init__(master)
+        self.palette = palette
+        self.config(bg=self.palette['secondary'])  # Set the editor's bg color to a HEAT color
+        self.pack(fill=tk.BOTH, expand=True)
+        self.create_widgets()
+        self.create_menu()
+        
+    def create_widgets(self):
+        """
+        Creates and lays out the core widgets of the editor's user interface.
+        """
+        # Setting up the main editing text area with custom colors from the Tailwind palette
+        self.text_area = tk.Text(self, bg=self.palette['raisin_black'][100], fg=self.palette['white'],
+                                 insertbackground=self.palette['xanthous'],
+                                 font=('Consolas', 12), undo=True, wrap=tk.WORD)
+        self.text_area.pack(expand=True, fill=tk.BOTH)
+
+    def create_menu(self):
+        """
+        Creates the menu system for the editor with file and edit operations.
+        """
+        self.menu_bar = Menu(self.master)
+
+        # File menu with new, open, save, and exit operations
+        file_menu = Menu(self.menu_bar, tearoff=0)
+        file_menu.add_command(label="New", command=self.new_file)
+        file_menu.add_command(label="Open", command=self.open_file)
+        file_menu.add_command(label="Save", command=self.save_file)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.master.quit)
+        self.menu_bar.add_cascade(label="File", menu=file_menu)
+
+        # Edit menu with undo and redo for now; more can be added 
+        edit_menu = Menu(self.menu_bar, tearoff=0)
+        edit_menu.add_command(label="Undo", command=self.text_area.edit_undo)
+        edit_menu.add_command(label="Redo", command=self.text_area.edit_redo)
+        self.menu_bar.add_cascade(label="Edit", menu=edit_menu)
+
+        self.master.config(menu=self.menu_bar)
+    
+    def on_open(self):
+        """ Handles the action of opening files, populating the editor with the file's content. """
+        file_path = filedialog.askopenfilename()
+        if file_path:
+            try:
+                with open(file_path, 'r') as file:
+                    text_content = file.read()
+                    self.text_widget.set_content(text_content)
+            except Exception as e:
+                messagebox.showerror("Open Failed", str(e))
+
+    def on_save(self):
+        """ Provides the functionality to save the current text content to a file. """
+        file_path = filedialog.asksaveasfilename()
+        if file_path:
+            try:
+                with open(file_path, 'w') as file:
+                    text_content = self.text_widget.get_content()
+                    file.write(text_content)
+            except Exception as e:
+                messagebox.showerror("Save Failed", str(e))
+
+    def new_file(self):
+        """
+        Clears existing content to start a new file.
+        """
+        self.text_area.delete(1.0, tk.END)
+
+    def open_file(self):
+        """
+        Opens a dialog to choose a file to load into the editor.
+        """
+        file_path = filedialog.askopenfilename()
+        if file_path:
+            with open(file_path, 'r') as f:
+                self.text_area.delete(1.0, tk.END)
+                self.text_area.insert(1.0, f.read())
+
+    def save_file(self):
+        """
+        Saves the current content to a file chosen through a save dialog.
+        """
+        file_path = filedialog.asksaveasfilename()
+        if file_path:
+            with open(file_path, 'w') as f:
+                f.write(self.text_area.get(1.0, tk.END))
 
     def initUI(self):
         """

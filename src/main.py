@@ -43,13 +43,25 @@ def main():
     theme_manager.apply_theme()
     # Retro Theme
     retro_theme_manager = RetroThemeManager(editor_ui_instance)
-    
+
+    # Retro Effects
+    retro_effects = RetroEffects(text_widget)
+    # Applying retro effects right away
+    retro_effects.apply_retro_effects()
+    root = tk.Tk()  # Example instantiation of Tk root, to be replaced with actual reference
+    retro_screen_effects = RetroScreenEffects(root)
+    # Applying screen effects upon initialization
+    retro_screen_effects.apply_screen_effects()
+
     # Syntax Highlighter
     syntax_highlighter = SyntaxHighlighter(main_editor.get_text_widget(), color_palette)
     syntax_highlighter.apply_highlighting_rules()
 
     # Initialize Main Editor with configuration
     main_editor = MainEditor(root, editor_config)
+
+    # Initialize the Editor Instance
+    editor_instance = Editor()
 
     # Set up the Editor UI interface
     editor_ui = EditorUI(root)
@@ -64,7 +76,13 @@ def main():
     # Bind 'Ctrl+Click' action to create hyperlinks that open the Flare Widget
     main_editor.setup_flare_bindings(flare_widget)
 
-    # Start the Tkinter main loop
+    root = tk.Tk()
+    palette = {
+        'editor_bg': '#292331',  # Tailwind 'Raisin black' darkest
+        'editor_fg': '#E5E7EB',  # Tailwind 'Cool gray' light
+        # ... define additional colors as per Tailwind HEAT palette
+    }
+    main_editor = MainEditor(root, palette)
     root.mainloop()
 
 if __name__ == '__main__':

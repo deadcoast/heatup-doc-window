@@ -2,11 +2,24 @@
 
 class EditorConfiguration:
     def __init__(self):
-        # Initialize a color palette with default and customizable color slots.
-        self.palette = {
-            'primary': '#FFFFFF',
-            'palette': self.load_tailwind_palette(),
-            'custom_colors': {}
+        self.palette = self._initialize_default_palette()
+
+    def _initialize_default_palette(self):
+        """
+        Initializes the editor's default color palette, including a range of greys, charcoals, and dark reds.
+        """
+        return {
+            'raisin_black': '#292331',
+            'dark_purple': '#2d2636',
+            'dark_purple_2': '#312a3b',
+            'dark_purple_3': '#362e41',
+            'dark_purple_4': '#442e3f',
+            'wine': '#6c2c39',
+            'auburn': '#a12a31',
+            'xanthous': '#fcbf49',
+            'peach_yellow': '#fedfa4',
+            'white': '#ffffff',
+            'custom_colors': {}  # Users can add their own hex codes for additional themes
         }
 
     @staticmethod
@@ -22,28 +35,50 @@ class EditorConfiguration:
             'white': ['#333333', '#666666', '#999999', '#cccccc', '#ffffff']
         }
 
+
+        # Hex code validation
+        if not isinstance(hex_code, str) or not hex_code.startswith('#'):
+            raise ValueError(f"Invalid hex code: {hex_code}. Hex codes should start with '#' and be valid colors.")
+        
+        # Add the validated custom color to the palette
+        self.palette['custom_colors'][key] = hex_code
+
+    def get_full_palette(self):
+        """
+        Retrieves the combined color palette of predefined colors and user-defined custom colors.
+        Returns:
+            dict: A dictionary containing both sets of colors.
+        """
+        return {**self.palette, **self.palette['custom_colors']}
+
     def add_custom_color(self, key, hex_code):
         """
-        Allows a user to define a custom color, validating the hex format.
-        
-        Parameters:
-            key (str): The name for the custom color.
-            hex_code (str): The hex color code (e.g., "#FFFFFF").
+        Provides the capability for users to add custom colors to the palette.
         """
-        if not isinstance(key, str) or not key.isidentifier():
-            raise ValueError("Key must be a valid identifier.")
+        # Validation ensures color codes are in the proper format.
+        if key in self.palette:
+            raise KeyError(f"Key {key} is already in use.")
         if not isinstance(hex_code, str) or not hex_code.startswith('#'):
-            raise ValueError("Invalid hex code format.")
+            raise ValueError("Hex code must be a valid string starting with '#'.")
+
         self.palette['custom_colors'][key] = hex_code
+
+    def get_color(self, key):
+        """
+        Retrieves a specific color by key, supporting both default and custom colors.
+        """
+        # Extraction logic accounts for all elements of the color palette.
+        return self.palette.get(key, self.palette['custom_colors'].get(key))
 
     def remove_custom_color(self, key):
         """
-        Removes a custom color, identified by its key.
-        
-        Parameters:
-            key (str): The name for the custom color.
+        Allows users to remove custom colors from the palette.
         """
-        self.palette['custom_colors'].pop(key, None)  # Silently ignore if key does not exist
+        # Removal logic includes error handling for non-existent keys.
+        try:
+            del self.palette['custom_colors'][key]
+        except KeyError:
+            raise KeyError(f"No custom color found for key '{key}'.")
 
     def get_color_palette(self):
         """ Retrieves the complete color palette, including custom colors """

@@ -60,13 +60,47 @@ class RetroEffects:
     """
     Class to add visual effects to the HEAT UP editor that mimic an old-school CRT display.
     """
-    def __init__(self, text_widget):
+    def init(self, text_widget):
         """
         Initializes the RetroEffects with a text widget from the editor UI.
-        
-        Parameters:
-            text_widget (tk.Text): The Text widget of the editor UI
+            Parameters:
+                text_widget (tk.Text): The Text widget of the editor UI
+         """
+        self.text_widget = text_widget
+        self.is_typewriter_effect_running = False
+
+    def start_cursor_blink_effect(self):
         """
+        Starts a retro-like cursor blinking effect in the text area.
+        """
+        blink_rate = 500  # Time in milliseconds for cursor to blink
+        while True:
+            # Show/hide the cursor by setting the insertontime and insertofftime of the text widget
+            self.text_widget.configure(insertontime=blink_rate, insertofftime=blink_rate)
+            sleep(blink_rate / 1000)
+
+    def typewriter_effect(self, text):
+        """
+        Simulates typewriter effect when typing into the text area.
+        """
+        self.is_typewriter_effect_running = True
+        for char in text:
+            # Insert the character at the end of text area
+            self.text_widget.insert(tk.END, char)
+            # Update the text widget to show the character
+            self.text_widget.update_idletasks()
+            # Delay to mimic human typing speed
+            sleep(0.1)
+        self.is_typewriter_effect_running = False
+
+    def apply_retro_effects(self):
+        """
+        Applies the retro effects to the text widget.
+        """
+        # Start the cursor blink effect in a separate thread
+        blink_thread = Thread(target=self.start_cursor_blink_effect)
+        blink_thread.daemon = True  # Daemonize thread to close when main program closes
+        blink_thread.start()
         self.text_widget = text_widget
         self.is_typewriter_effect_running = False
 
